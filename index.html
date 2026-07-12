@@ -8,8 +8,18 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <main class="game" aria-labelledby="game-title">
+  <main id="start-screen" class="start-screen" aria-labelledby="start-title">
+    <div class="start-card">
+      <div class="welcome-animals" aria-hidden="true">🐰 🐼 🐵</div>
+      <h1 id="start-title">배고픈 동물에게<br>먹이를 주세요!</h1>
+      <p class="start-guide">동물이 좋아하는 먹이를 골라주세요!</p>
+      <button id="start-button" class="start-button" type="button">🎮 시작하기</button>
+    </div>
+  </main>
+
+  <main id="game-screen" class="game" aria-labelledby="game-title" hidden>
     <header class="top-bar">
+      <button id="end-button" class="end-button" type="button">종료하기</button>
       <h1 id="game-title">배고픈 동물에게 먹이를 주세요!</h1>
       <div class="star-counter" aria-label="모은 별 개수" aria-live="polite">
         <span aria-hidden="true">⭐</span>
@@ -27,7 +37,7 @@
       </div>
 
       <div id="feedback" class="feedback" role="status" aria-live="assertive">
-        먹이를 골라 주세요!
+        어떤 먹이를 좋아할까요?
       </div>
 
       <div id="food-options" class="food-options" aria-label="먹이 선택지"></div>

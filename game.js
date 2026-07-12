@@ -5,8 +5,16 @@ const FOODS = {
   carrot: { name: "당근", emoji: "🥕", image: "assets/foods/carrot.png" },
   bamboo: { name: "대나무", emoji: "🎋", image: "assets/foods/bamboo.png" },
   banana: { name: "바나나", emoji: "🍌", image: "assets/foods/banana.png" },
-  fish: { name: "생선", emoji: "🐟", image: "assets/foods/fish.png" },
-  bone: { name: "뼈다귀", emoji: "🦴", image: "assets/foods/bone.png" }
+  fish: { name: "물고기", emoji: "🐟", image: "assets/foods/fish.png" },
+  bone: { name: "뼈다귀", emoji: "🦴", image: "assets/foods/bone.png" },
+  watermelon: { name: "수박", emoji: "🍉", image: "assets/foods/watermelon.png" },
+  leaves: { name: "나뭇잎", emoji: "🍃", image: "assets/foods/leaves.png" },
+  acorn: { name: "도토리", emoji: "🌰", image: "assets/foods/acorn.png" },
+  insect: { name: "벌레", emoji: "🐛", image: "assets/foods/insect.png" },
+  grass: { name: "풀", emoji: "🌿", image: "assets/foods/grass.png" },
+  hay: { name: "건초", emoji: "🌾", image: "assets/foods/hay.png" },
+  corn: { name: "옥수수", emoji: "🌽", image: "assets/foods/corn.png" },
+  sweetPotato: { name: "고구마", emoji: "🍠", image: "assets/foods/sweet-potato.png" }
 };
 
 const ANIMALS = [
@@ -14,22 +22,41 @@ const ANIMALS = [
   { id: "panda", name: "판다", emoji: "🐼", image: "assets/animals/panda.png", correctFood: "bamboo" },
   { id: "monkey", name: "원숭이", emoji: "🐵", image: "assets/animals/monkey.png", correctFood: "banana" },
   { id: "cat", name: "고양이", emoji: "🐱", image: "assets/animals/cat.png", correctFood: "fish" },
-  { id: "dog", name: "강아지", emoji: "🐶", image: "assets/animals/dog.png", correctFood: "bone" }
+  { id: "dog", name: "강아지", emoji: "🐶", image: "assets/animals/dog.png", correctFood: "bone" },
+  { id: "elephant", name: "코끼리", emoji: "🐘", image: "assets/animals/elephant.png", correctFood: "watermelon" },
+  { id: "giraffe", name: "기린", emoji: "🦒", image: "assets/animals/giraffe.png", correctFood: "leaves" },
+  { id: "squirrel", name: "다람쥐", emoji: "🐿️", image: "assets/animals/squirrel.png", correctFood: "acorn" },
+  { id: "penguin", name: "펭귄", emoji: "🐧", image: "assets/animals/penguin.png", correctFood: "fish" },
+  { id: "frog", name: "개구리", emoji: "🐸", image: "assets/animals/frog.png", correctFood: "insect" },
+  { id: "cow", name: "소", emoji: "🐮", image: "assets/animals/cow.png", correctFood: "grass" },
+  { id: "horse", name: "말", emoji: "🐴", image: "assets/animals/horse.png", correctFood: "hay" },
+  { id: "sheep", name: "양", emoji: "🐑", image: "assets/animals/sheep.png", correctFood: "grass" },
+  { id: "chicken", name: "닭", emoji: "🐔", image: "assets/animals/chicken.png", correctFood: "corn" },
+  { id: "pig", name: "돼지", emoji: "🐷", image: "assets/animals/pig.png", correctFood: "sweetPotato" }
 ];
 
+const startScreen = document.querySelector("#start-screen");
+const gameScreen = document.querySelector("#game-screen");
+const startButton = document.querySelector("#start-button");
+const endButton = document.querySelector("#end-button");
 const animalImage = document.querySelector("#animal-image");
 const animalEmoji = document.querySelector("#animal-emoji");
 const animalPrompt = document.querySelector("#animal-prompt");
-const animalCard = document.querySelector("#animal-card");
 const foodOptions = document.querySelector("#food-options");
 const feedback = document.querySelector("#feedback");
 const starCount = document.querySelector("#star-count");
 const celebration = document.querySelector("#celebration");
 
+let gameState = "start";
 let stars = 0;
 let currentAnimal = null;
+let animalQueue = [];
 let lastAnimalId = null;
-let isAnswerLocked = false;
+let previousFoodSet = "";
+let nextRoundTimer = null;
+let wrongFeedbackTimer = null;
+let celebrationTimer = null;
+let gameSession = 0;
 
 function showImageOrEmoji(img, emojiElement, src, emoji, alt) {
   img.hidden = true;
@@ -56,9 +83,30 @@ function shuffled(items) {
   return copy;
 }
 
+function refillAnimalQueue() {
+  animalQueue = shuffled(ANIMALS);
+  if (animalQueue.length > 1 && animalQueue[0].id === lastAnimalId) {
+    [animalQueue[0], animalQueue[1]] = [animalQueue[1], animalQueue[0]];
+  }
+}
+
 function chooseAnimal() {
-  const choices = ANIMALS.filter((animal) => animal.id !== lastAnimalId);
-  return choices[Math.floor(Math.random() * choices.length)];
+  if (animalQueue.length === 0) refillAnimalQueue();
+  const animal = animalQueue.shift();
+  lastAnimalId = animal.id;
+  return animal;
+}
+
+function chooseFoodOptions(correctFood) {
+  const otherFoods = Object.keys(FOODS).filter((id) => id !== correctFood);
+  let optionIds;
+  let attempts = 0;
+  do {
+    optionIds = shuffled([correctFood, ...shuffled(otherFoods).slice(0, 2)]);
+    attempts += 1;
+  } while (optionIds.slice().sort().join("|") === previousFoodSet && attempts < 10);
+  previousFoodSet = optionIds.slice().sort().join("|");
+  return optionIds;
 }
 
 function makeFoodButton(foodId) {
@@ -88,28 +136,64 @@ function makeFoodButton(foodId) {
   return button;
 }
 
+function clearAllTimers() {
+  window.clearTimeout(nextRoundTimer);
+  window.clearTimeout(wrongFeedbackTimer);
+  window.clearTimeout(celebrationTimer);
+  nextRoundTimer = null;
+  wrongFeedbackTimer = null;
+  celebrationTimer = null;
+}
+
+function resetGameData() {
+  clearAllTimers();
+  gameSession += 1;
+  stars = 0;
+  currentAnimal = null;
+  animalQueue = [];
+  lastAnimalId = null;
+  previousFoodSet = "";
+  starCount.textContent = "0";
+  foodOptions.replaceChildren();
+  celebration.replaceChildren();
+  feedback.className = "feedback";
+  feedback.textContent = "어떤 먹이를 좋아할까요?";
+}
+
 function startRound() {
-  isAnswerLocked = false;
+  if (gameState !== "playing") return;
   currentAnimal = chooseAnimal();
-  lastAnimalId = currentAnimal.id;
   animalPrompt.textContent = `${currentAnimal.name}가 배가 고파요!`;
   showImageOrEmoji(animalImage, animalEmoji, currentAnimal.image, currentAnimal.emoji, currentAnimal.name);
-
-  const wrongFoods = shuffled(Object.keys(FOODS).filter((id) => id !== currentAnimal.correctFood)).slice(0, 2);
-  const optionIds = shuffled([currentAnimal.correctFood, ...wrongFoods]);
+  const optionIds = chooseFoodOptions(currentAnimal.correctFood);
   foodOptions.replaceChildren(...optionIds.map(makeFoodButton));
   feedback.className = "feedback";
   feedback.textContent = "어떤 먹이를 좋아할까요?";
-  animalCard.classList.remove("success");
+}
+
+function startGame() {
+  resetGameData();
+  gameState = "playing";
+  startScreen.hidden = true;
+  gameScreen.hidden = false;
+  startRound();
+}
+
+function endGame() {
+  gameState = "start";
+  resetGameData();
+  gameScreen.hidden = true;
+  startScreen.hidden = false;
+  startButton.focus();
 }
 
 function handleAnswer(event) {
-  if (isAnswerLocked) return;
+  if (gameState !== "playing" || !currentAnimal) return;
   const button = event.currentTarget;
   const selectedFood = button.dataset.foodId;
 
   if (selectedFood === currentAnimal.correctFood) {
-    isAnswerLocked = true;
+    gameState = "feedback";
     stars += 1;
     starCount.textContent = String(stars);
     feedback.className = "feedback correct";
@@ -117,12 +201,18 @@ function handleAnswer(event) {
     button.classList.add("correct-choice");
     foodOptions.querySelectorAll("button").forEach((item) => { item.disabled = true; });
     showCelebration();
-    window.setTimeout(startRound, 1500);
+    const sessionAtAnswer = gameSession;
+    nextRoundTimer = window.setTimeout(() => {
+      if (gameState !== "feedback" || gameSession !== sessionAtAnswer) return;
+      gameState = "playing";
+      startRound();
+    }, 1500);
   } else {
     feedback.className = "feedback wrong";
     feedback.textContent = "앗, 다른 먹이를 찾아볼까요?";
     button.classList.add("wrong-choice");
-    window.setTimeout(() => button.classList.remove("wrong-choice"), 500);
+    window.clearTimeout(wrongFeedbackTimer);
+    wrongFeedbackTimer = window.setTimeout(() => button.classList.remove("wrong-choice"), 500);
   }
 }
 
@@ -138,7 +228,8 @@ function showCelebration() {
     sparkle.style.animationDelay = `${index * 70}ms`;
     celebration.append(sparkle);
   });
-  window.setTimeout(() => celebration.replaceChildren(), 1300);
+  celebrationTimer = window.setTimeout(() => celebration.replaceChildren(), 1300);
 }
 
-startRound();
+startButton.addEventListener("click", startGame);
+endButton.addEventListener("click", endGame);
