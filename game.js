@@ -7,14 +7,14 @@ const FOODS = {
   banana: { name: "바나나", emoji: "🍌", image: "assets/foods/banana.png" },
   fish: { name: "물고기", emoji: "🐟", image: "assets/foods/fish.png" },
   bone: { name: "뼈다귀", emoji: "🦴", image: "assets/foods/bone.png" },
-  watermelon: { name: "수박", emoji: "🍉", image: "assets/foods/watermelon.png" },
+  eucalyptus: { name: "유칼립투스 잎", emoji: "🌱", image: "assets/foods/eucalyptus.png" },
   leaves: { name: "나뭇잎", emoji: "🍃", image: "assets/foods/leaves.png" },
   acorn: { name: "도토리", emoji: "🌰", image: "assets/foods/acorn.png" },
   insect: { name: "벌레", emoji: "🐛", image: "assets/foods/insect.png" },
   grass: { name: "풀", emoji: "🌿", image: "assets/foods/grass.png" },
   hay: { name: "건초", emoji: "🌾", image: "assets/foods/hay.png" },
   corn: { name: "옥수수", emoji: "🌽", image: "assets/foods/corn.png" },
-  sweetPotato: { name: "고구마", emoji: "🍠", image: "assets/foods/sweet-potato.png" }
+  ants: { name: "개미", emoji: "🐜", image: "assets/foods/ants.png" }
 };
 
 const ANIMALS = [
@@ -23,7 +23,7 @@ const ANIMALS = [
   { id: "monkey", name: "원숭이", emoji: "🐵", image: "assets/animals/monkey.png", correctFood: "banana" },
   { id: "cat", name: "고양이", emoji: "🐱", image: "assets/animals/cat.png", correctFood: "fish" },
   { id: "dog", name: "강아지", emoji: "🐶", image: "assets/animals/dog.png", correctFood: "bone" },
-  { id: "elephant", name: "코끼리", emoji: "🐘", image: "assets/animals/elephant.png", correctFood: "watermelon" },
+  { id: "koala", name: "코알라", emoji: "🐨", image: "assets/animals/koala.png", correctFood: "eucalyptus" },
   { id: "giraffe", name: "기린", emoji: "🦒", image: "assets/animals/giraffe.png", correctFood: "leaves" },
   { id: "squirrel", name: "다람쥐", emoji: "🐿️", image: "assets/animals/squirrel.png", correctFood: "acorn" },
   { id: "penguin", name: "펭귄", emoji: "🐧", image: "assets/animals/penguin.png", correctFood: "fish" },
@@ -32,7 +32,7 @@ const ANIMALS = [
   { id: "horse", name: "말", emoji: "🐴", image: "assets/animals/horse.png", correctFood: "hay" },
   { id: "sheep", name: "양", emoji: "🐑", image: "assets/animals/sheep.png", correctFood: "grass" },
   { id: "chicken", name: "닭", emoji: "🐔", image: "assets/animals/chicken.png", correctFood: "corn" },
-  { id: "pig", name: "돼지", emoji: "🐷", image: "assets/animals/pig.png", correctFood: "sweetPotato" }
+  { id: "anteater", name: "개미핥기", emoji: "🐾", image: "assets/animals/anteater.png", correctFood: "ants" }
 ];
 
 const startScreen = document.querySelector("#start-screen");
@@ -81,6 +81,23 @@ function shuffled(items) {
     [copy[i], copy[j]] = [copy[j], copy[i]];
   }
   return copy;
+}
+
+function hasBatchim(word) {
+  if (!word) return false;
+  const lastCharacterCode = word.charCodeAt(word.length - 1);
+  const firstHangulSyllable = 0xac00;
+  const lastHangulSyllable = 0xd7a3;
+  if (lastCharacterCode < firstHangulSyllable || lastCharacterCode > lastHangulSyllable) return false;
+  return (lastCharacterCode - firstHangulSyllable) % 28 !== 0;
+}
+
+function withSubjectParticle(word) {
+  return `${word}${hasBatchim(word) ? "이" : "가"}`;
+}
+
+function withObjectParticle(word) {
+  return `${word}${hasBatchim(word) ? "을" : "를"}`;
 }
 
 function refillAnimalQueue() {
@@ -163,7 +180,7 @@ function resetGameData() {
 function startRound() {
   if (gameState !== "playing") return;
   currentAnimal = chooseAnimal();
-  animalPrompt.textContent = `${currentAnimal.name}가 배가 고파요!`;
+  animalPrompt.textContent = `${withSubjectParticle(currentAnimal.name)} 배가 고파요!`;
   showImageOrEmoji(animalImage, animalEmoji, currentAnimal.image, currentAnimal.emoji, currentAnimal.name);
   const optionIds = chooseFoodOptions(currentAnimal.correctFood);
   foodOptions.replaceChildren(...optionIds.map(makeFoodButton));
@@ -197,7 +214,8 @@ function handleAnswer(event) {
     stars += 1;
     starCount.textContent = String(stars);
     feedback.className = "feedback correct";
-    feedback.textContent = "딩동댕! 잘했어요! ⭐";
+    const correctFood = FOODS[currentAnimal.correctFood];
+    feedback.textContent = `딩동댕! ${withSubjectParticle(currentAnimal.name)} ${withObjectParticle(correctFood.name)} 맛있게 먹어요! ⭐`;
     button.classList.add("correct-choice");
     foodOptions.querySelectorAll("button").forEach((item) => { item.disabled = true; });
     showCelebration();
